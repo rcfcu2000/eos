@@ -29,4 +29,4 @@ ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-RUN cd /contracts/cxp && ./build_contracts.sh && ./deploy_contracts.sh
+RUN cd /contracts/cxp && ./build_contracts.sh
