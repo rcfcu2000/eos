@@ -1,6 +1,9 @@
 #include "cxpthreadpool.h"
 #include <fc/log/logger.hpp>
-
+#include <sys/syscall.h>
+#include <appbase/application.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
+using namespace eosio::chain;
 template <class T>
 void CxpTaskQueue<T>::push_Task(const T& task)
 {
@@ -21,6 +24,30 @@ int CxpTaskQueue<T>::get_size()
      return m_taskQueue.size();
 }
 
+template <class T>
+void CxpTaskQueue<T>::clear()
+{
+    std::queue<T> empty;
+    std::swap( m_taskQueue, empty );
+}
+template <class T>
+std::queue<T>& CxpTaskQueue<T>::get_queue()
+{
+    return m_taskQueue;
+}
+template <class T>
+void CxpTaskQueue<T>::push_head(CxpTaskQueue<T>& q)
+{
+    std::queue<T> temp;
+    std::swap( m_taskQueue, temp );
+    std::swap( m_taskQueue, q.get_queue() );
+    while(temp.size()>0)
+    {
+        m_taskQueue.push(temp.front());
+        temp.pop();
+    }
+
+}
 
 void CxpThreadPool::run()
 {
@@ -57,14 +84,25 @@ void CxpThreadPool::run()
            if(m_taskQueue[m_read_queue].get_size()==0)
                continue;
 
+
                 CxpTask task = m_taskQueue[m_read_queue].pop_Task();
                 fc::variant var = m_taskvarQueue[m_read_queue].pop_Task();
-                string name = m_taskstringQueue[m_read_queue].pop_Task();
-                //elog("${a} ${b}",("a",name)("b",var));
+                string name = m_taskStringQueue[m_read_queue].pop_Task();
+
+
+
+                elog("${a} ${b} tid=${c}",("a",name)("b",var)("c",syscall(SYS_gettid)));
                 m_run_thread++;
 
                 lock.unlock();
                 task();
+//                if(task())
+//                {
+//                    m_taskReplayQueue.push_Task(task);
+//                    m_taskReplayvarQueue.push_Task(var);
+//                    m_taskReplayStringQueue.push_Task(name);
+//                }
+
                 m_run_thread--;
 
 
@@ -89,6 +127,7 @@ void CxpThreadPool::stop()
 void CxpThreadPool::init(int num)
 {
     m_threadNum=num,is_run=false,is_suspend=true,m_run_thread=0,m_read_queue=0,trxcount=0;
+    is_replay=false;
     if(m_threadNum <= 0) return;
     is_run = true;
     for (int i=0;i<m_threadNum;i++)
@@ -119,13 +158,33 @@ void CxpThreadPool::resume()
 {
     is_suspend=false;
 
+//    if(!is_replay)
+//    {
+//        m_taskReplayQueue.clear();
+//        m_taskReplayvarQueue.clear();
+//        m_taskReplayStringQueue.clear();
+//    }
+//    else
+//    {
+//        if(m_taskReplayQueue.get_size()>0)
+//        {
+//            elog("replay trx ${a}",("a",m_taskReplayQueue.get_size()));
+//            m_taskQueue[m_read_queue].push_head(m_taskReplayQueue);
+//            m_taskvarQueue[m_read_queue].push_head(m_taskReplayvarQueue);
+//            m_taskStringQueue[m_read_queue].push_head(m_taskReplayStringQueue);
+//        }
+
+//        is_replay=false;
+//    }
+
+
     if(m_taskQueue[0].get_size()>0 || m_taskQueue[1].get_size()>0)
         m_cond.notify_all();
 
 }
 
 //添加任务
-void CxpThreadPool::AddNewTask(const CxpTask& task,const fc::variant var,string name)
+void CxpThreadPool::AddNewTask(const CxpTask& task,const fc::variant var,std::string name)
 {
 
     if(m_taskQueue[(m_read_queue+1)%2].get_size()>=100000)
@@ -133,7 +192,7 @@ void CxpThreadPool::AddNewTask(const CxpTask& task,const fc::variant var,string 
     boost::unique_lock<boost::mutex> lock(m_switch_queue_mutex);
     m_taskQueue[(m_read_queue+1)%2].push_Task(task);
     m_taskvarQueue[(m_read_queue+1)%2].push_Task(var);
-    m_taskstringQueue[(m_read_queue+1)%2].push_Task(name);
+    m_taskStringQueue[(m_read_queue+1)%2].push_Task(name);
     trxcount++;
     lock.unlock();
 
@@ -152,6 +211,11 @@ uint64_t CxpThreadPool::get_readqueue_size()
 uint64_t CxpThreadPool::get_writequeue_size()
 {
     return m_taskQueue[(m_read_queue+1)%2].get_size();
+}
+
+void CxpThreadPool::setReplay(bool replay)
+{
+    is_replay=replay;
 }
 
 
@@ -219,27 +283,27 @@ void CxpTransaction::run()
     }
 }
 
-void CxpTransaction::dispatch_transaction(const CxpTask& task,const packed_transaction_ptr& trx)
+void CxpTransaction::dispatch_transaction(const CxpTask& task,const eosio::chain::packed_transaction_ptr& trx)
 {
-    transaction t=trx->get_transaction();
+    eosio::chain::transaction t=trx->get_transaction();
     if(t.actions.size()>0)
     {
-        name act_account=t.actions[0].account;
-        string account_str=act_account.to_string();
-        name act_name=t.actions[0].name;
-        string name_str=act_name.to_string();
-        string demo=account_str+" ";
+        eosio::chain::name act_account=t.actions[0].account;
+        std::string account_str=act_account.to_string();
+        eosio::chain::name act_name=t.actions[0].name;
+        std::string name_str=act_name.to_string();
+        std::string demo=account_str+" ";
         demo+=name_str;
         demo+=" ";
        // elog( "account=${a} name=${b}",("a",account_str)("b",name_str));
         if(account_str=="cxp.match" && name_str=="ask")
         {
             auto v=cxp_match_serializer.binary_to_variant(cxp_match_serializer.get_action_type(act_name),t.actions[0].data,abi_serializer_max_time);
-            //string currency1=v["currency"].get_string();
-            //string commodity1=v["commodity"].get_string();
+            std::string currency1=v["currency"].get_string();
+            std::string commodity1=v["commodity"].get_string();
             //size_t next=currency.find(' ');
-            asset currency=asset::from_string(v["currency"].get_string());
-            asset commodity=asset::from_string(v["commodity"].get_string());
+            eosio::chain::asset currency=asset::from_string(v["currency"].get_string());
+            eosio::chain::asset commodity=asset::from_string(v["commodity"].get_string());
             const CoinPair pair={currency.get_symbol().to_symbol_code(),commodity.get_symbol().to_symbol_code()};
             std::map<CoinPair,std::unique_ptr<CxpThreadPool>>::iterator it=m_match_contractPool.find(pair);
             if(it==m_match_contractPool.end())
@@ -289,7 +353,7 @@ void CxpTransaction::stop()
 void CxpTransaction::init()
 {
     if(m_threadNum <= 0) return;
-    m_contractPool.init(5);
+    m_contractPool.init(1);
     is_run = true;
     for (int i=0;i<m_threadNum;i++)
     {
@@ -301,6 +365,22 @@ void CxpTransaction::init()
     abi_serializer_max_time = appbase::app().get_plugin<eosio::chain_plugin>().get_abi_serializer_max_time();
     cxp_match_serializer.set_abi(fc::json::from_string(coinxp_match_abi).as<eosio::abi_def>(), abi_serializer_max_time);
     cxp_bank_serializer.set_abi(fc::json::from_string(coinxp_bank_abi).as<eosio::abi_def>(), abi_serializer_max_time);
+    cxp_address_serializer.set_abi(fc::json::from_string(address_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_api_serializer.set_abi(fc::json::from_string(coinxp_api_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_exchange_serializer.set_abi(fc::json::from_string(coinxp_exchange_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_latestprice_serializer.set_abi(fc::json::from_string(coinxp_latestprice_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_orderdb_serializer.set_abi(fc::json::from_string(coinxp_orderdb_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_token_serializer.set_abi(fc::json::from_string(coinxp_token_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_deposit_serializer.set_abi(fc::json::from_string(deposit_tx_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_tokenmap_serializer.set_abi(fc::json::from_string(tokenmap_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_useraddress_serializer.set_abi(fc::json::from_string(useraddress_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+    cxp_withdraw_serializer.set_abi(fc::json::from_string(withdraw_abi).as<eosio::chain::abi_def>(), abi_serializer_max_time);;
+
+
+
+
+
+
 }
 
 void CxpTransaction::pause()
@@ -338,7 +418,7 @@ void CxpTransaction::pause()
 
 void CxpTransaction::resume()
 {
-
+    is_replay=false;
     m_contractPool.resume();
     std::map<CoinPair,std::unique_ptr<CxpThreadPool>>::iterator it=m_match_contractPool.begin();
     for(;it!=m_match_contractPool.end();it++)
@@ -353,7 +433,7 @@ void CxpTransaction::resume()
 }
 
 //添加任务
-void CxpTransaction::AddNewTask(const CxpTask& task,const packed_transaction_ptr& trx)
+void CxpTransaction::AddNewTask(const CxpTask& task,const eosio::chain::packed_transaction_ptr& trx)
 {
 
     if(m_taskQueue[(m_read_queue+1)%2].get_size()>=100000)
@@ -381,3 +461,24 @@ uint64_t CxpTransaction::get_writequeue_size()
 {
     return m_taskQueue[(m_read_queue+1)%2].get_size();
 }
+
+void CxpTransaction::setReplay(bool replay)
+{
+    if(is_replay==replay)
+        return ;
+    is_replay=replay;
+    m_contractPool.setReplay(replay);
+    std::map<CoinPair,std::unique_ptr<CxpThreadPool>>::iterator it=m_match_contractPool.begin();
+    it=m_match_contractPool.begin();
+    for(;it!=m_match_contractPool.end();it++)
+    {
+        it->second->setReplay(replay);
+    }
+}
+
+CxpTransaction& CxpTransaction::instance() {
+   static CxpTransaction _threadpool(1);
+   return _threadpool;
+}
+
+CxpTransaction& threadpool() { return CxpTransaction::instance(); }

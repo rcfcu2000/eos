@@ -27,7 +27,7 @@
 #include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
-
+#include <sys/syscall.h>
 #ifndef CHAINBASE_NUM_RW_LOCKS
    #define CHAINBASE_NUM_RW_LOCKS 10
 #endif
@@ -152,6 +152,8 @@ namespace chainbase {
          id_type_set                  new_ids;
          id_type                      old_next_id = 0;
          int64_t                      revision = 0;
+         pid_t                        tid = 0;
+         bool                         canremove=false;
    };
 
    /**
@@ -193,8 +195,12 @@ namespace chainbase {
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
          typedef undo_state< value_type >                              undo_state_type;
 
-         generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         generic_index( allocator<value_type> a ,pid_t id)
+         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){
+             _thread_id=id;
+             if(id==0)
+                 std::cout<<"threadid id==0"<<std::endl;
+         }
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -213,8 +219,10 @@ namespace chainbase {
                v.id = new_id;
                c( v );
             };
-
+            boost::unique_lock<boost::mutex> lock2(_indices_mutex);
+            // std::cout<<"emplace"<<syscall(SYS_gettid)<<std::endl;
             auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
+            lock2.unlock();
 
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
@@ -228,12 +236,21 @@ namespace chainbase {
          template<typename Modifier>
          void modify( const value_type& obj, Modifier&& m ) {
             on_modify( obj );
+            boost::unique_lock<boost::mutex> lock2(_indices_mutex);
+            //std::cout<<"modify"<<syscall(SYS_gettid)<<std::endl;
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
-            if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+            if( !ok )
+            {
+                lock2.unlock();
+                BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+            }
+
          }
 
          void remove( const value_type& obj ) {
             on_remove( obj );
+            boost::unique_lock<boost::mutex> lock2(_indices_mutex);
+            //std::cout<<"remove"<<syscall(SYS_gettid)<<std::endl;
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
@@ -300,10 +317,16 @@ namespace chainbase {
 
          session start_undo_session( bool enabled ) {
             if( enabled ) {
+
+               pid_t tid=syscall(SYS_gettid);
                boost::unique_lock<boost::mutex> lock(_stack_mutex);
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
-               _stack.back().revision = ++_revision;
+               if(_thread_id==tid)
+                    _stack.back().revision = ++_revision;
+               _stack.back().tid=tid;
+
+               //std::cout<<"start_undo_session index "<<_stack.size()-1<<" "<<syscall(SYS_gettid)<<std::endl;
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -318,31 +341,70 @@ namespace chainbase {
           */
          void undo() {
             if( !enabled() ) return;
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
-            const auto& head = _stack.back();
+
+            pid_t tid=syscall(SYS_gettid);
+            int index_stack=0;
+            for(auto it:_stack)
+            {
+                if(it.tid!=tid || it.canremove)
+                    index_stack++;
+                else
+                    break;
+            }
+            //std::cout<<"undo index "<<index_stack<<" "<<syscall(SYS_gettid)<<std::endl;
+            auto& head = _stack[index_stack];
+
 
 
             for( auto& item : head.old_values ) {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
+                  //std::cout<<"undo modify item.second.id="<<item.second.id<<syscall(SYS_gettid)<<std::endl;
                   v = std::move( item.second );
                });
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
-            }
+               if( !ok )
+               {
+                   BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+               }
 
+            }
+            boost::unique_lock<boost::mutex> lock(_indices_mutex);
             for( auto id : head.new_ids )
             {
+               //std::cout<<"undo new id="<<id<<syscall(SYS_gettid)<<std::endl;
                _indices.erase( _indices.find( id ) );
             }
             _next_id = head.old_next_id;
 
             for( auto& item : head.removed_values ) {
+               //std::cout<<"undo removed id="<<item.second.id<<syscall(SYS_gettid)<<std::endl;
                bool ok = _indices.emplace( std::move( item.second ) ).second;
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+               if( !ok )
+               {
+                   BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+               }
+
             }
 
-            _stack.pop_back();
-            --_revision;
             lock.unlock();
+            head.canremove=true;
+            if(tid==_stack.back().tid)
+            {
+                boost::unique_lock<boost::mutex> lock(_stack_mutex);
+                while(_stack.back().canremove)
+                {
+                    if(_stack.back().tid==_thread_id)
+                        --_revision;
+                    _stack.pop_back();
+                    //std::cout<<"undo delete index "<<_stack.size()<<" "<<syscall(SYS_gettid)<<std::endl;
+                }
+
+            }
+
+
+
+
+
+
          }
 
          /**
@@ -354,15 +416,50 @@ namespace chainbase {
          void squash()
          {
             if( !enabled() ) return;
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+
+
+
             if( _stack.size() == 1 ) {
+
+                boost::unique_lock<boost::mutex> lock(_stack_mutex);
                _stack.pop_front();
                --_revision;
+
                return;
             }
 
-            auto& state = _stack.back();
-            auto& prev_state = _stack[_stack.size()-2];
+            pid_t tid=syscall(SYS_gettid);
+            int prve_index_stack=-1;
+            int index_stack=-1;
+            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+            if(_thread_id!=tid)
+            {
+                for(int i=_stack.size()-1;i>=0;i--)
+                {
+                    if(_stack[i].tid==tid && _stack[i].canremove==false && index_stack==-1)
+                        index_stack=i;
+                    if(_stack[i].tid==_thread_id && _stack[i].canremove==false && prve_index_stack==-1)
+                    {
+                        prve_index_stack=i;
+                        break;
+                    }
+                }
+                if(prve_index_stack==-1 || index_stack==-1)
+                    BOOST_THROW_EXCEPTION( std::logic_error( "squash error" ) );
+            }
+            else
+            {
+                prve_index_stack=_stack.size()-2;
+                index_stack=_stack.size()-1;
+            }
+
+
+
+            //std::cout<<"squash index="<<index_stack<<"to "<<prve_index_stack<<" "<<syscall(SYS_gettid)<<std::endl;
+
+            auto& state = _stack[index_stack];
+            auto& prev_state = _stack[prve_index_stack];
+
 
             // An object's relationship to a state can be:
             // in new_ids            : new
@@ -451,8 +548,20 @@ namespace chainbase {
                prev_state.removed_values.emplace( std::move(obj) ); //[obj.second->id] = std::move(obj.second);
             }
 
-            _stack.pop_back();
-            --_revision;
+            _stack[index_stack].canremove=true;
+            if(tid==_stack.back().tid)
+            {
+                while(_stack.back().canremove)
+                {
+                    if(_stack.back().tid==_thread_id)
+                        --_revision;
+                    _stack.pop_back();
+                    //std::cout<<"squash delete index "<<_stack.size()<<" "<<syscall(SYS_gettid)<<std::endl;
+                }
+
+            }
+
+
          }
 
          /**
@@ -460,11 +569,14 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+
+
+            //std::cout<<"commit"<<syscall(SYS_gettid)<<std::endl;
             while( _stack.size() && _stack[0].revision <= revision )
             {
                _stack.pop_front();
             }
+
          }
 
          /**
@@ -478,12 +590,20 @@ namespace chainbase {
 
          void set_revision( uint64_t revision )
          {
-    	     boost::unique_lock<boost::mutex> lock(_stack_mutex);
+
             if( _stack.size() != 0 )
-               BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
+            {
+
+                BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
+            }
+
 
             if( revision > std::numeric_limits<int64_t>::max() )
-               BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
+            {
+
+                BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
+            }
+
 
             _revision = static_cast<int64_t>(revision);
          }
@@ -498,7 +618,7 @@ namespace chainbase {
          std::pair<int64_t, int64_t> undo_stack_revision_range()const {
             int64_t begin = _revision;
             int64_t end   = _revision;
-
+            //std::cout<<"undo_stack_revision_range"<<syscall(SYS_gettid)<<std::endl;
             if( _stack.size() > 0 ) {
                begin = _stack.front().revision - 1;
                end   = _stack.back().revision;
@@ -511,10 +631,25 @@ namespace chainbase {
          bool enabled()const { return _stack.size(); }
 
          void on_modify( const value_type& v ) {
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
-            if( !enabled() ) return;
 
-            auto& head = _stack.back();
+
+            if( !enabled() ) return;
+            pid_t tid=syscall(SYS_gettid);
+            int index_stack=0;
+            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+            for(auto it:_stack)
+            {
+                if(it.tid!=tid || it.canremove)
+                    index_stack++;
+                else
+                    break;
+            }
+
+            //std::cout<<"on_modify v.id="<<v.id<<" index"<<index_stack<<" "<<syscall(SYS_gettid)<<std::endl;
+            auto& head = _stack[index_stack];
+            lock.unlock();
+
+
 
             if( head.new_ids.find( v.id ) != head.new_ids.end() )
                return;
@@ -527,10 +662,23 @@ namespace chainbase {
          }
 
          void on_remove( const value_type& v ) {
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
-            if( !enabled() ) return;
 
-            auto& head = _stack.back();
+
+            if( !enabled() ) return;
+            pid_t tid=syscall(SYS_gettid);
+            int index_stack=0;
+            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+            for(auto it:_stack)
+            {
+                if(it.tid!=tid || it.canremove)
+                    index_stack++;
+                else
+                    break;
+            }
+            //std::cout<<"on_remove v.id="<<v.id<<" index"<<index_stack<<" "<<syscall(SYS_gettid)<<std::endl;
+            auto& head = _stack[index_stack];
+            lock.unlock();
+
             if( head.new_ids.count(v.id) ) {
                head.new_ids.erase( v.id );
                return;
@@ -550,14 +698,29 @@ namespace chainbase {
          }
 
          void on_create( const value_type& v ) {
-            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+
+
             if( !enabled() ) return;
-            auto& head = _stack.back();
+            pid_t tid=syscall(SYS_gettid);
+            int index_stack=0;
+            boost::unique_lock<boost::mutex> lock(_stack_mutex);
+            for(auto it:_stack)
+            {
+                if(it.tid!=tid || it.canremove)
+                    index_stack++;
+                else
+                    break;
+            }
+           // std::cout<<"on_create v.id="<<v.id<<" index"<<index_stack<<" "<<syscall(SYS_gettid)<<std::endl;
+            auto& head = _stack[index_stack];
+            lock.unlock();
 
             head.new_ids.insert( v.id );
          }
+
          boost::mutex _stack_mutex;//互斥锁
-         boost::interprocess::deque< undo_state_type, allocator<undo_state_type> > _stack;
+         using qeueu_stack=boost::interprocess::deque< undo_state_type, allocator<undo_state_type>>;
+         qeueu_stack _stack;
 
          /**
           *  Each new session increments the revision, a squash will decrement the revision by combining
@@ -565,11 +728,14 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
+
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
+         boost::mutex _indices_mutex;//互斥锁
          index_type                      _indices;
          uint32_t                        _size_of_value_type = 0;
          uint32_t                        _size_of_this = 0;
+         pid_t                           _thread_id;
 
    };
 
@@ -804,7 +970,7 @@ namespace chainbase {
                   BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
                }
                first_time_adding = true;
-               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ),_thread_id );
              }
 
             idx_ptr->validate();
@@ -844,7 +1010,7 @@ namespace chainbase {
             if( type_id >= _index_map.size() )
                _index_map.resize( type_id + 1 );
 
-            auto new_index = new index<index_type>( *idx_ptr );
+            auto new_index = new index<index_type>( *idx_ptr);
             _index_map[ type_id ].reset( new_index );
             _index_list.push_back( new_index );
          }
@@ -1039,6 +1205,8 @@ namespace chainbase {
             return ret;
          }
 
+         void set_threadid(pid_t id){_thread_id=id;}
+
       private:
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
@@ -1046,7 +1214,7 @@ namespace chainbase {
          bool                                                        _read_only = false;
          bip::file_lock                                              _flock;
          boost::mutex  _db_mutex;//互斥锁
-
+         pid_t         _thread_id;
          /**
           * This is a sparse list of known indices kept to accelerate creation of undo sessions
           */

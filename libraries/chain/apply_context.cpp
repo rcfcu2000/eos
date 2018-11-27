@@ -428,7 +428,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
 //   require_write_lock( scope );
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
-
+   //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",tab.code)("b",tab.scope)("c",tab.table)("d",tab.payer));
    EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
 
    const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
@@ -457,6 +457,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
+   //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",table_obj.code)("b",table_obj.scope)("c",table_obj.table)("d",table_obj.payer));
 
    const int64_t overhead = config::billable_size_v<key_value_object>;
    int64_t old_size = (int64_t)(obj.value.size() + overhead);
@@ -486,7 +487,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
    EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
-
+   //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",table_obj.code)("b",table_obj.scope)("c",table_obj.table)("d",table_obj.payer));
 //   require_write_lock( table_obj.scope );
 
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );

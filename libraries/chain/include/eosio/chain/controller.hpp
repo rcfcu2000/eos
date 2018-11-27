@@ -6,7 +6,10 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/abi_def.hpp>
 
+
+class fc::variant;
 namespace chainbase {
    class database;
 }
@@ -86,6 +89,9 @@ namespace eosio { namespace chain {
 
          controller( const config& cfg );
          ~controller();
+
+
+
 
          void add_indices();
          void startup();

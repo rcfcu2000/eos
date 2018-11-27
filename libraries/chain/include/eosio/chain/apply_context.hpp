@@ -184,6 +184,7 @@ class apply_context {
 //               context.require_write_lock( scope );
 
                const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
+               //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",tab.code)("b",tab.scope)("c",tab.table)("d",tab.payer));
 
                const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -208,7 +209,7 @@ class apply_context {
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
-
+               //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",table_obj.code)("b",table_obj.scope)("c",table_obj.table)("d",table_obj.payer));
 //               context.require_write_lock( table_obj.scope );
 
                context.db.modify( table_obj, [&]( auto& t ) {
@@ -228,7 +229,7 @@ class apply_context {
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                EOS_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
-
+               //elog("account_name=${a} scope_name=${b} table_name=${c} payer=${d}",("a",table_obj.code)("b",table_obj.scope)("c",table_obj.table)("d",table_obj.payer));
 //               context.require_write_lock( table_obj.scope );
 
                if( payer == account_name() ) payer = obj.payer;

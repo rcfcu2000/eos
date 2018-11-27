@@ -65,6 +65,7 @@ namespace eosio { namespace chain {
       uint64_t              primary_key;
       account_name          payer = 0;
       shared_string         value;
+
    };
 
    using key_value_index = chainbase::shared_multi_index_container<

@@ -112,9 +112,9 @@ struct controller_impl {
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
-   boost::mutex actions_mutex;//»¥³âËø
-   boost::mutex trxs_mutex;//»¥³âËø
-   boost::mutex authorization_mutex;//»¥³âËø
+   boost::mutex actions_mutex;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+   boost::mutex trxs_mutex;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+   boost::mutex authorization_mutex;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
     *  are removed from this list if they are re-applied in other blocks. Producers
@@ -144,7 +144,7 @@ struct controller_impl {
    void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
-
+#include <sys/syscall.h>
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
     db( cfg.state_dir,
@@ -184,6 +184,8 @@ struct controller_impl {
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });
+
+   db.set_threadid(syscall(SYS_gettid));
 
    }
 
@@ -807,7 +809,7 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
             if( !self.skip_auth_check() && !trx->implicit ) {
-			   boost::unique_lock<boost::mutex> lock(authorization_mutex);
+               boost::unique_lock<boost::mutex> lock(authorization_mutex);
                authorization.check_authorization(
                        trx->trx.actions,
                        trx->recover_keys( chain_id ),
@@ -839,10 +841,10 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-			{
-            	boost::unique_lock<boost::mutex> lock(actions_mutex);
-	            fc::move_append(pending->_actions, move(trx_context.executed));
-			}
+            {
+                boost::unique_lock<boost::mutex> lock(actions_mutex);
+                fc::move_append(pending->_actions, move(trx_context.executed));
+            }
 
             // call the accept signal but only once for this transaction
             if (!trx->accepted) {
@@ -1009,11 +1011,11 @@ struct controller_impl {
          }
 
          finalize_block();
-
+         //CXPTEST
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
-                   block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+         //EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
+         //          block_validate_exception, "Block ID does not match",
+         //          ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
@@ -1385,6 +1387,7 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
+
 }
 
 controller::~controller() {

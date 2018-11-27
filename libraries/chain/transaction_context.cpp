@@ -7,6 +7,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 
+
 namespace eosio { namespace chain {
 
    transaction_context::transaction_context( controller& c,
@@ -22,6 +23,7 @@ namespace eosio { namespace chain {
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
    {
+
       if (!c.skip_db_sessions()) {
          undo_session = c.db().start_undo_session(true);
       }
@@ -30,7 +32,9 @@ namespace eosio { namespace chain {
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
+
       EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
@@ -427,12 +431,25 @@ namespace eosio { namespace chain {
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
+
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
       apply_context  acontext( control, *this, a, recurse_depth );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
 
       try {
+
+         //elog("action account=${a} name=${b}",("a",a.account)("b",a.name));
+         name act_account=a.account;
+         string account_str=act_account.to_string();
+         name act_name=a.name;
+         string name_str=act_name.to_string();
+//         if(account_str=="cxp.match")
+//         {
+//             CxpTransaction::instance().init();
+//             //auto v=threadpool().cxp_match_serializer.binary_to_variant(threadpool().cxp_match_serializer.get_action_type(act_name),a.data,threadpool().abi_serializer_max_time);
+//             //elog("action account=${a} name=${b} ${c}",("a",a.account)("b",a.name)("c",v));
+//         }
          acontext.exec();
       } catch( ... ) {
          trace = move(acontext.trace);

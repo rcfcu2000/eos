@@ -145,9 +145,12 @@ namespace eosio { namespace chain {
                     EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
 
              }
+
              it = instantiation_cache[tid].emplace(code_id, my_runtime_interface[tid]->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
 
+
          }
+
          return it->second;
       }
 
