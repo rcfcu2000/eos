@@ -25,6 +25,8 @@ COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /eos/Docker/config.ini /
 COPY --from=builder /etc/eosio-version /etc
 COPY --from=builder /eos/Docker/nodeosd.sh /opt/eosio/bin/nodeosd.sh
+# Copy and buid coinxp contracts
+COPY --from=builder /ncc/contracts /coinxp/contracts/
 
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh
@@ -38,10 +40,8 @@ RUN apt-get update \
     && wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.5.0/eosio.cdt_1.5.0-1_amd64.deb \
     && apt-get -y install ./eosio.cdt_1.5.0-1_amd64.deb
 
-# Copy and buid coinxp contracts
-COPY --from=builder /ncc/contracts /contracts/cxp
-
-RUN cd /contracts/cxp && ./build_contracts.sh
+# Build coinxp contracts
+RUN cd /coinxp/contracts && ./build_contracts.sh
 
 # Additional tools
 RUN apt-get update \
