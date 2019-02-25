@@ -1,5 +1,5 @@
 FROM eosio/builder as builder
-ARG cxpbranch=coinxp/2.0.0
+ARG cxpbranch=coinxp/1.1.1
 ARG eosbranch=coinxp/1.6.x
 ARG symbol=SYS
 
