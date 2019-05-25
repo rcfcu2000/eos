@@ -10,7 +10,7 @@ RUN git clone -b $eosbranch https://github.com/rcfcu2000/eos.git --recursive \
     && cmake --build /tmp/build --target install
 
 FROM eosio/builder as ncc
-ARG cxpbranch=coinxp/1.3.0
+ARG cxpbranch=coinxp/2.0.1
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
