@@ -44,6 +44,5 @@ ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:
 
 # Build coinxp contracts
 RUN cd /coinxp/contracts/scripts \
-    && npm install \
     && ./build_contracts.sh \
     && mkdir -p /opt/eosio/bin/data-dir/wallet
