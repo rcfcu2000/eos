@@ -10,7 +10,7 @@ RUN git clone -b $eosbranch https://github.com/rcfcu2000/eos.git --recursive \
     && cmake --build /tmp/build --target install
 
 FROM eosio/builder as ncc
-ARG cxpbranch=coinxp/2.0.1
+ARG cxpbranch=coinxp/1.0.0-dev
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
@@ -36,6 +36,7 @@ COPY --from=builder /etc/eosio-version /etc
 COPY --from=builder /eos/Docker/nodeosd.sh /opt/eosio/bin/nodeosd.sh
 # Copy and buid coinxp contracts
 COPY --from=ncc /ncc/contracts /coinxp/contracts/
+COPY --from=ncc /ncc/services/secretmgr /coinxp/services/secretmgr
 
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh
