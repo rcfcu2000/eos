@@ -44,6 +44,8 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Build coinxp contracts
-RUN cd /coinxp/contracts/scripts \
+RUN cd /coinxp/services/secretmgr \
+    && npm install \
+    && cd /coinxp/contracts/scripts \
     && ./build_contracts.sh \
     && mkdir -p /opt/eosio/bin/data-dir/wallet
