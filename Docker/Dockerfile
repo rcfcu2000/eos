@@ -1,5 +1,5 @@
 FROM eosio/builder as builder
-ARG eosbranch=coinxp/1.6.x
+ARG eosbranch=hub_exchange
 ARG symbol=SYS
 
 # Get coinxp eos source code and compile
@@ -10,7 +10,7 @@ RUN git clone -b $eosbranch https://github.com/rcfcu2000/eos.git --recursive \
     && cmake --build /tmp/build --target install
 
 FROM eosio/builder as ncc
-ARG cxpbranch=coinxp/2.0.1
+ARG cxpbranch=hub_exchange
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
@@ -36,6 +36,7 @@ COPY --from=builder /etc/eosio-version /etc
 COPY --from=builder /eos/Docker/nodeosd.sh /opt/eosio/bin/nodeosd.sh
 # Copy and buid coinxp contracts
 COPY --from=ncc /ncc/contracts /coinxp/contracts/
+COPY --from=ncc /ncc/services/secretmgr /coinxp/services/secretmgr
 
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh
@@ -43,6 +44,8 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Build coinxp contracts
-RUN cd /coinxp/contracts/scripts \
+RUN cd /coinxp/services/secretmgr \
+    && npm install \
+    && cd /coinxp/contracts/scripts \
     && ./build_contracts.sh \
     && mkdir -p /opt/eosio/bin/data-dir/wallet
