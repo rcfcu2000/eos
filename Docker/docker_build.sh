@@ -2,7 +2,7 @@
 
 # Constants
 image_prefix=coinxp/coinxp
-version=hub_exchange
+version=hub_test
 USERNAME=coinxp
 PASSWORD=ywRnttcEUY,GPRaosBi4Un?QUooFiNcA
 ORGANIZATION=coinxp
@@ -18,5 +18,5 @@ curl -u ${USERNAME}:${PASSWORD} -X "DELETE" https://cloud.docker.com/v2/reposito
 echo "---- Docker build and push service ${service_name} ----"
 image_name=${image_prefix}-${service_name}
 docker_file=Dockerfile
-sudo docker build . -f ${docker_file} --no-cache --tag ${image_name}:${version}
+sudo docker build . -f ${docker_file} --no-cache --build-arg cxpbranch=${version} --tag ${image_name}:${version}
 sudo docker push ${image_name}:${version}
