@@ -28,7 +28,7 @@ COPY --from=ncc /ncc/contracts /coinxp/contracts/
 COPY --from=ncc /ncc/services/secretmgr /coinxp/services/secretmgr
 
 ENV EOSIO_ROOT=/opt/eosio
-RUN chmod +x /opt/eosio/bin/nodeosd.sh
+# RUN chmod +x /opt/eosio/bin/nodeosd.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -37,4 +37,4 @@ RUN cd /coinxp/services/secretmgr \
     && npm install \
     && cd /coinxp/contracts/scripts \
     && ./build_contracts.sh \
-    && mkdir -p /opt/eosio/bin/data-dir/wallet
+#   && mkdir -p /opt/eosio/bin/data-dir/wallet
