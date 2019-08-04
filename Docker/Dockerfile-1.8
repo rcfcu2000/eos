@@ -7,7 +7,7 @@ FROM ubuntu:18.04
 
 RUN apt-get -y update \
     && apt-get -y dist-upgrade \
-		&& apt install --reinstall software-properties-common \
+		&& apt -y install --reinstall software-properties-common \
 		&& add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" \
 		&& apt-get -y update \
     && apt-get -y dist-upgrade \    
