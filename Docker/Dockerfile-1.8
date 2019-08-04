@@ -17,7 +17,7 @@ RUN apt-get -y update \
     && apt-get -y install vim \
     && rm -rf /var/lib/apt/lists/*
     
-RUN wget https://github.com/eosio/eos/releases/download/v1.8.1/eosio_1.8.1-1-ubuntu-16.04_amd64.deb
+RUN wget https://github.com/eosio/eos/releases/download/v1.8.1/eosio_1.8.1-1-ubuntu-16.04_amd64.deb \
     && apt install ./eosio_1.8.1-1-ubuntu-16.04_amd64.deb    
 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
