@@ -10,7 +10,8 @@ RUN apt-get -y update \
 		&& apt install --reinstall software-properties-common \
 		&& add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" \
 		&& apt-get -y update \
-    && apt-get -y dist-upgrade \    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
+    && apt-get -y dist-upgrade \    
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
     && apt-get -y install libicu55 wget \
     && wget https://github.com/eosio/eos/releases/download/v1.8.1/eosio_1.8.1-1-ubuntu-16.04_amd64.deb \
     && apt-get -y install ./eosio_1.8.1-1-ubuntu-16.04_amd64.deb \
