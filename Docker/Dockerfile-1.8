@@ -5,7 +5,8 @@ RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc
 
 FROM ubuntu:18.04
 
-RUN add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" \
+RUN apt install --reinstall software-properties-common \
+		&& add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" \
     && apt-get -y update \
     && apt-get -y dist-upgrade \
     && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
