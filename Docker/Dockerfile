@@ -1,5 +1,5 @@
 FROM eosio/builder as builder
-ARG eosbranch=coinxp/1.6.x
+ARG eosbranch=coinxp/hub_exchange
 ARG symbol=SYS
 
 # Get coinxp eos source code and compile
@@ -21,7 +21,7 @@ RUN apt-get -y update \
     && apt-get -y dist-upgrade \
     && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
     && apt-get -y install wget \
-    && wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.5.0/eosio.cdt_1.5.0-1_amd64.deb \
+    && wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.6.0/eosio.cdt_1.6.0-1_amd64.deb \
     && apt-get -y install ./eosio.cdt_1.5.0-1_amd64.deb \
     && apt-get -y install nodejs \
     && apt-get -y install npm \
