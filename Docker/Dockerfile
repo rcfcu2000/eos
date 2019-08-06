@@ -1,5 +1,5 @@
 FROM eosio/builder as builder
-ARG eosbranch=coinxp/hub_exchange
+ARG eosbranch=hub_exchange
 ARG symbol=SYS
 
 # Get coinxp eos source code and compile
