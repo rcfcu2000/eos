@@ -22,7 +22,7 @@ RUN apt-get -y update \
     && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
     && apt-get -y install wget \
     && wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.6.0/eosio.cdt_1.6.0-1_amd64.deb \
-    && apt-get -y install ./eosio.cdt_1.6.0-1_amd64.deb \
+    && apt-get -y install ./eosio.cdt_1.5.0-1_amd64.deb \
     && apt-get -y install nodejs \
     && apt-get -y install npm \
     && apt-get -y install git \
