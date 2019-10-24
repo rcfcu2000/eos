@@ -1,4 +1,4 @@
-FROM ubuntu:16.04 as builder
+FROM coinxp/eos-builder:v1 as builder
 ARG eosbranch=hub_exchange
 ARG symbol=SYS
 
