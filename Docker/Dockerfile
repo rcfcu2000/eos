@@ -15,7 +15,7 @@ ARG cxpbranch
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get -y update \
     && apt-get -y dist-upgrade \
