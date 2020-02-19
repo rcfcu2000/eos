@@ -1,5 +1,5 @@
 FROM coinxp/eos-builder:v1 as builder
-ARG eosbranch=hub_test_ali
+ARG eosbranch=hub_exchange_ali
 ARG symbol=SYS
 
 # Get coinxp eos source code and compile
@@ -11,7 +11,7 @@ RUN git clone -b $eosbranch https://github.com/rcfcu2000/eos.git --recursive \
     && cmake --build /tmp/build --target install
 
 FROM coinxp/eos-builder:v1 as ncc
-ARG cxpbranch=hub_test_ali
+ARG cxpbranch=hub_exchange_ali
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
