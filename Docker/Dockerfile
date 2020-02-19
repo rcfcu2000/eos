@@ -27,6 +27,10 @@ RUN apt-get -y update \
     && apt-get -y install npm \
     && apt-get -y install git \
     && apt-get -y install vim \
+    && apt-get -y install python3 \
+    && apt-get -y install python3-pip \
+    && pip3 install aliyunsdkcore \
+    && pip3 install aliyun-python-sdk-kms \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
