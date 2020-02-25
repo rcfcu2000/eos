@@ -121,8 +121,9 @@ namespace eosio { namespace chain {
 
       initial_objective_duration_limit = objective_duration_limit;
 
-      if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
-         validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
+      // skip cpu usage validation - HC
+      //if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
+         //validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
       if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
