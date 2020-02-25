@@ -23,6 +23,8 @@ RUN apt-get -y update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/* /usr/local/lib/
+COPY --from=builder /lib/x86_64-linux-gnu/libusb* /usr/local/lib/
 COPY --from=builder /eos/build/bin /opt/eosio/bin
 COPY --from=builder /eos/Docker/nodeosd.sh /opt/eosio/bin/nodeosd.sh
 
