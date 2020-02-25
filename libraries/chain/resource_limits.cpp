@@ -138,6 +138,8 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
       });
 
+      // remove resource check -HC
+      /*
       if( cpu_weight >= 0 && state.total_cpu_weight > 0 ) {
          uint128_t window_size = config.account_cpu_usage_average_window;
          auto virtual_network_capacity_in_window = (uint128_t)state.virtual_cpu_limit * window_size;
@@ -175,6 +177,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
                      ("max_user_use_in_window",max_user_use_in_window) );
 
       }
+      */
    }
 
    // account for this transaction in the block and do not exceed those limits either
@@ -183,8 +186,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       rls.pending_net_usage += net_usage;
    });
 
-   EOS_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );
-   EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
+   // remove resource check -HC
+   //EOS_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );
+   //EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
 void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
