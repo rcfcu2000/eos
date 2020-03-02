@@ -10,7 +10,7 @@ RUN git clone -b $eosbranch https://github.com/rcfcu2000/eos.git --recursive \
        -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build -DBUILD_MONGO_DB_PLUGIN=true -DCORE_SYMBOL_NAME=$symbol \
     && cmake --build /tmp/build --target install
 
-FROM eosio/builder as ncc
+FROM coinxp/eos-builder:v1 as ncc
 ARG cxpbranch
 
 RUN git clone -b $cxpbranch https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
