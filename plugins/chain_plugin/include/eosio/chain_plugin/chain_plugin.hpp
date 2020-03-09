@@ -521,7 +521,8 @@ public:
 
          auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
             auto cur_time = fc::time_point::now();
-            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+            // change to 1s -HC
+            auto end_time = cur_time + fc::microseconds(1000 * 1000); /// 10ms max time
             vector<char> data;
             for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++count, ++itr, cur_time = fc::time_point::now() ) {
                copy_inline_row(*itr, data);
