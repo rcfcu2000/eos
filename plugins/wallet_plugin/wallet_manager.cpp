@@ -45,6 +45,9 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
 }
 
 void wallet_manager::check_timeout() {
+   return;
+
+   /* HC hack
    if (timeout_time != timepoint_t::max()) {
       const auto& now = std::chrono::system_clock::now();
       if (now >= timeout_time) {
@@ -52,6 +55,7 @@ void wallet_manager::check_timeout() {
       }
       timeout_time = now + timeout;
    }
+   */
 }
 
 std::string wallet_manager::create(const std::string& name) {
