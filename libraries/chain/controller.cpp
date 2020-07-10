@@ -3119,6 +3119,9 @@ uint32_t controller::configured_subjective_signature_length_limit()const {
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {
+   return;
+
+   /* HC hack
    const auto& chain_configuration = get_global_properties().configuration;
 
    EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(),
@@ -3132,6 +3135,7 @@ void controller::validate_expiration( const transaction& trx )const { try {
                "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
                ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
                ("max_til_exp",chain_configuration.max_transaction_lifetime) );
+   */
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void controller::validate_tapos( const transaction& trx )const { try {
