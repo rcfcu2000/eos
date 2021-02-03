@@ -1,8 +1,8 @@
 FROM ubuntu:18.04 as builder
 
 RUN apt-get update && apt-get install git sudo -y
-RUN cd / && git clone -b hub_v2_test https://rcfcu2000:Video0me!@github.com/rcfcu2000/eos.git
-RUN cd / && git clone -b hub_test https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
+RUN cd / && git clone -b hub_exchange_v2 https://rcfcu2000:Video0me!@github.com/rcfcu2000/eos.git
+RUN cd / && git clone -b hub_exchange https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
 RUN cd /eos && git submodule update --init --recursive
 RUN cd /eos/scripts && chmod +x eosio_build.sh && ./eosio_build.sh -m -y
