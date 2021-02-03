@@ -5,14 +5,14 @@ RUN cd / && git clone -b hub_v2_test https://rcfcu2000:Video0me!@github.com/rcfc
 RUN cd / && git clone -b hub_test https://rcfcu2000:Video0me!@github.com/rcfcu2000/ncc.git
 
 RUN cd /eos && git submodule update --init --recursive
-RUN cd /eos/scripts && chmod +x eosio_build.sh && ./eosio_build.sh -y
+RUN cd /eos/scripts && chmod +x eosio_build.sh && ./eosio_build.sh -m -y
 
 
 FROM ubuntu:18.04
 
 RUN apt-get -y update \
     && apt-get -y dist-upgrade \
-    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates libmongoc-1.0-0 libbson-1.0\
     && apt-get -y install wget \
     && wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.5.0/eosio.cdt_1.5.0-1_amd64.deb \
     && apt-get -y install ./eosio.cdt_1.5.0-1_amd64.deb \
